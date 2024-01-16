@@ -1,139 +1,141 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { DataGrid } from '@mui/x-data-grid';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
-import axios from 'axios';
 
-const AppPage = () => {
-    const [apiCredentials, setApiCredentials] = useState({
-        username: '',
-        password: '',
-        apiUrl: '',
+function App() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
+  const [issues, setIssues] = useState([]);
+  const [events, setEvents] = useState([]);
+
+  const handleUsernameChange = (event) => {
+    setUsername(event.target.value);
+  };
+
+  const handlePasswordChange = (event) => {
+    setPassword(event.target.value);
+  };
+
+  const handleBaseUrlChange = (event) => {
+    setBaseUrl(event.target.value);
+  };
+
+  const handleFetchData = () => {
+    // Fetch issues data from the backend
+    axios.get('/proxy/issues', {
+      params: {
+        username: username,
+        password: password,
+        base_url: baseUrl,
+      },
+    })
+    .then((response) => {
+      // Add unique IDs based on row number
+      const issuesWithIds = response.data.map((issue, index) => ({
+        ...issue,
+        id: index + 1,
+      }));
+      setIssues(issuesWithIds);
+    })
+    .catch((error) => {
+      console.error('Error fetching issues:', error);
     });
-    const [selectedDataset, setSelectedDataset] = useState('issues');
-    const [issues, setIssues] = useState([]);
-    const [events, setEvents] = useState([]);
 
-    useEffect(() => {
-        // Fetch data when the selected dataset or credentials change
-        handleFetchData();
-    }, [selectedDataset, apiCredentials]);
+    // Fetch events data from the backend
+    axios.get('/proxy/events', {
+      params: {
+        username: username,
+        password: password,
+        base_url: baseUrl,
+      },
+    })
+    .then((response) => {
+      // Add unique IDs based on row number
+      const eventsWithIds = response.data.map((event, index) => ({
+        ...event,
+        id: index + 1,
+      }));
+      setEvents(eventsWithIds);
+    })
+    .catch((error) => {
+      console.error('Error fetching events:', error);
+    });
+  };
 
-    const columnsIssues = [
-        // Define columns for issues
-        { field: 'id', headerName: 'ID', width: 70 },
-        { field: 'issueId', headerName: 'Issue ID', width: 200 },
-        { field: 'name', headerName: 'Name', width: 300 },
-        { field: 'deviceId', headerName: 'Device ID', width: 200 },
-        { field: 'lastOccurrenceTime', headerName: 'Last Occurrence Time', width: 220 },
-        { field: 'status', headerName: 'Status', width: 120 },
-    ];
+  // Define columns for the DataGrid
+  const issueColumns = [
+    { field: 'id', headerName: 'ID', width: 70 },
+    { field: 'issueId', headerName: 'Issue ID', width: 150 },
+    { field: 'name', headerName: 'Name', width: 200 },
+    { field: 'deviceId', headerName: 'Device ID', width: 150 },
+    { field: 'lastOccurrenceTime', headerName: 'Last Occurrence Time', width: 200 },
+    { field: 'status', headerName: 'Status', width: 120 },
+  ];
 
-    const columnsEvents = [
-        // Define columns for events
-        { field: 'id', headerName: 'ID', width: 70 },
-        { field: 'eventName', headerName: 'Event Name', width: 150 },
-        { field: 'eventType', headerName: 'Event Type', width: 150 },
-        { field: 'eventDescription', headerName: 'Description', width: 200 },
-        { field: 'eventTime', headerName: 'Event Time', width: 200 },
-    ];
+  const eventColumns = [
+    { field: 'id', headerName: 'ID', width: 70 },
+    { field: 'eventName', headerName: 'Event Name', width: 200 },
+    { field: 'eventType', headerName: 'Event Type', width: 150 },
+    { field: 'eventDescription', headerName: 'Event Description', width: 300 },
+    { field: 'eventTime', headerName: 'Event Time', width: 200 },
+  ];
 
-    const handleFetchData = async () => {
-        try {
-            const apiUrl = encodeURIComponent(apiCredentials.apiUrl);
-            const username = encodeURIComponent(apiCredentials.username);
-            const password = encodeURIComponent(apiCredentials.password);
+  return (
+    <div>
+      <h2>Data Fetcher</h2>
+      <TextField
+        label="Username"
+        variant="outlined"
+        value={username}
+        onChange={handleUsernameChange}
+        fullWidth
+        margin="normal"
+      />
+      <TextField
+        label="Password"
+        variant="outlined"
+        type="password"
+        value={password}
+        onChange={handlePasswordChange}
+        fullWidth
+        margin="normal"
+      />
+      <TextField
+        label="Base URL"
+        variant="outlined"
+        value={baseUrl}
+        onChange={handleBaseUrlChange}
+        fullWidth
+        margin="normal"
+      />
+      <Button variant="contained" onClick={handleFetchData} color="primary">
+        Fetch Data
+      </Button>
 
-            // Constructing the API call URL for the proxy
-            const url = `${process.env.REACT_APP_PROXY_URL}/${selectedDataset}?username=${username}&password=${password}&apiUrl=${apiUrl}`;
+      <h2>Issues</h2>
+      <div style={{ height: 400, width: '100%' }}>
+        <DataGrid
+          rows={issues}
+          columns={issueColumns}
+          pageSize={10}
+          checkboxSelection
+        />
+      </div>
 
-            // Preparing the Authorization header
-            const authHeader = `Basic ${btoa(`${apiCredentials.username}:${apiCredentials.password}`)}`;
+      <h2>Events</h2>
+      <div style={{ height: 400, width: '100%' }}>
+        <DataGrid
+          rows={events}
+          columns={eventColumns}
+          pageSize={10}
+          checkboxSelection
+        />
+      </div>
+    </div>
+  );
+}
 
-            // Using Axios to make the GET request
-            const response = await axios.get(url, {
-                headers: {
-                    'Authorization': authHeader,
-                },
-            });
-
-            // Check if the response is successful
-            if (response.status === 200) {
-                if (selectedDataset === 'issues') {
-                    setIssues(response.data);
-                } else if (selectedDataset === 'events') {
-                    setEvents(response.data);
-                }
-            } else {
-                console.error('Failed to fetch data');
-            }
-        } catch (error) {
-            console.error('Error fetching data:', error);
-        }
-    };
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '10px' }}>
-            {/* Input fields for API credentials */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                <TextField
-                    label="Username"
-                    variant="outlined"
-                    value={apiCredentials.username}
-                    onChange={(e) => setApiCredentials({ ...apiCredentials, username: e.target.value })}
-                    style={{ marginRight: '10px' }}
-                />
-                <TextField
-                    label="Password"
-                    variant="outlined"
-                    type="password"
-                    value={apiCredentials.password}
-                    onChange={(e) => setApiCredentials({ ...apiCredentials, password: e.target.value })}
-                    style={{ marginRight: '10px' }}
-                />
-                <TextField
-                    label="API URL"
-                    variant="outlined"
-                    value={apiCredentials.apiUrl}
-                    onChange={(e) => setApiCredentials({ ...apiCredentials, apiUrl: e.target.value })}
-                    style={{ marginRight: '10px' }}
-                />
-                <Button variant="contained" color="primary" onClick={handleFetchData}>
-                    Fetch Data
-                </Button>
-            </div>
-
-            {/* Buttons to select dataset */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                <Button
-                    variant={selectedDataset === 'issues' ? 'contained' : 'outlined'}
-                    color="primary"
-                    onClick={() => setSelectedDataset('issues')}
-                    style={{ marginRight: '10px' }}
-                >
-                    Issues
-                </Button>
-                <Button
-                    variant={selectedDataset === 'events' ? 'contained' : 'outlined'}
-                    color="primary"
-                    onClick={() => setSelectedDataset('events')}
-                >
-                    Events
-                </Button>
-            </div>
-
-            {/* DataGrid to display data */}
-            <div style={{ height: '400px', width: '100%' }}>
-                <DataGrid
-                    rows={selectedDataset === 'issues' && Array.isArray(issues) ? issues.map((issue, index) => ({ ...issue, id: `issue-${index}` })) : []}
-                    columns={selectedDataset === 'issues' ? columnsIssues : columnsEvents}
-                    pageSize={5}
-                    autoHeight
-                    getRowId={(row) => row.id} // Specify the custom id field
-                />
-            </div>
-        </div>
-    );
-};
-
-export default AppPage;
+export default App;
