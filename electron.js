@@ -8,7 +8,6 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: false, // Disable nodeIntegration for security
             contextIsolation: true, // Enable contextIsolation for security
-            preload: path.join(__dirname, '../build/preload.js') // Path to your preload script
         },
     });
 

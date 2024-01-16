@@ -83,7 +83,7 @@ const HomePage = () => {
     <Container maxWidth="md">
       <Box my={4}>
         <Typography variant="h4" gutterBottom>
-          Duo Security Two-Factor Authentication Workflow
+          Catalyst Center Custom Notifications
         </Typography>
 
         {error && <Alert severity="error" style={{ whiteSpace: 'pre-line' }}>{error}</Alert>}
