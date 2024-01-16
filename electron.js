@@ -1,27 +1,27 @@
-const { app, BrowserWindow } = require('electron');
+// electron.js
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
+let mainWindow;
+
 function createWindow() {
-    const win = new BrowserWindow({
+    mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
-            nodeIntegration: false, // Disable nodeIntegration for security
-            contextIsolation: true, // Enable contextIsolation for security
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js'), // Load the preload script
         },
     });
 
-    import('electron-is-dev')
-        .then((isDev) => {
-            win.loadURL(
-                isDev.default
-                    ? 'http://localhost:3000/' // Load from React dev server
-                    : `file://${path.join(__dirname, '../build/index.html')}` // Load built React app
-            );
-        })
-        .catch((error) => {
-            console.error('Error loading electron-is-dev:', error);
-        });
+    mainWindow.loadFile('public/index.html'); // Load your HTML file
+
+    mainWindow.webContents.openDevTools(); // Open DevTools if needed
+
+    mainWindow.on('closed', function () {
+        mainWindow = null;
+    });
 }
 
 app.whenReady().then(createWindow);
@@ -33,7 +33,22 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (mainWindow === null) {
         createWindow();
+    }
+});
+
+// Example: Receive a request from the renderer process
+ipcMain.on('fetch-issues', async (event, requestData) => {
+    try {
+        // Make a request to your FastAPI backend using the 'electron' object
+        const response = await window.electron.makeHttpRequest(
+            'http://localhost:8000/issues',
+            'GET',
+            requestData
+        );
+        event.reply('fetch-issues-response', response); // Send the response back to the renderer process
+    } catch (error) {
+        event.reply('fetch-issues-response', { error: error.message });
     }
 });
