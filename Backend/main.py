@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from dnacentersdk import DNACenterAPI
 from pydantic import BaseModel
@@ -7,13 +7,12 @@ import datetime
 
 app = FastAPI()
 
-# Middleware to allow CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class FormattedIssue(BaseModel):
@@ -21,7 +20,7 @@ class FormattedIssue(BaseModel):
     issueId: str
     name: str
     deviceId: str
-    lastOccurenceTime: str
+    lastOccurrenceTime: str
     status: str
 
 class FormattedEvent(BaseModel):
@@ -31,21 +30,24 @@ class FormattedEvent(BaseModel):
     eventDescription: str
     eventTime: str
 
-# Endpoint to get issues
+def format_time(epoch_time):
+    if epoch_time:
+        return datetime.datetime.fromtimestamp(epoch_time / 1000).strftime('%Y-%m-%d %H:%M:%S')
+    return 'N/A'
+
+# Original /issues endpoint
 @app.get("/issues", response_model=List[FormattedIssue])
-def get_issues(username: str, password: str, apiUrl: str):
-    # Use the username, password, and apiUrl values passed in the request
+def get_issues(username: str, password: str, base_url: str):
     dnac_config = {
-        "base_url": apiUrl,
+        "base_url": base_url,
         "username": username,
         "password": password,
         "version": "2.3.5.3",
         "verify": False
     }
 
-    api = DNACenterAPI(**dnac_config)
-
     try:
+        api = DNACenterAPI(**dnac_config)
         raw_issues = api.issues.issues()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -57,27 +59,31 @@ def get_issues(username: str, password: str, apiUrl: str):
             issueId=issue.get('issueId', ''),
             name=issue.get('name', ''),
             deviceId=issue.get('deviceId', ''),
-            lastOccurenceTime=format_time(issue.get('last_occurence_time', 0)),
+            lastOccurrenceTime=format_time(issue.get('lastOccurrenceTime', 0)),
             status=issue.get('status', '')
         )
         formatted_issues.append(formatted_issue)
 
     return formatted_issues
 
-# Endpoint to get events
+# Proxy endpoint for /issues
+@app.get("/proxy/issues", response_model=List[FormattedIssue])
+def proxy_issues(username: str, password: str, base_url: str):
+    return get_issues(username, password, base_url)
+
+# Original /events endpoint
 @app.get("/events", response_model=List[FormattedEvent])
-def get_auditlog_parent_records(username: str, password: str, apiUrl: str):
-    # Use the username, password, and apiUrl values passed in the request
+def get_events(username: str, password: str, base_url: str):
     dnac_config = {
-        "base_url": apiUrl,
+        "base_url": base_url,
         "username": username,
         "password": password,
         "version": "2.3.5.3",
         "verify": False
     }
 
-    api = DNACenterAPI(**dnac_config)
     try:
+        api = DNACenterAPI(**dnac_config)
         raw_events = api.event_management.get_auditlog_parent_records()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -95,8 +101,11 @@ def get_auditlog_parent_records(username: str, password: str, apiUrl: str):
 
     return formatted_events
 
-# Helper function to format time
-def format_time(epoch_time):
-    if epoch_time:
-        return datetime.datetime.fromtimestamp(epoch_time / 1000).strftime('%Y-%m-%d %H:%M:%S')
-    return 'N/A'
+# Proxy endpoint for /events
+@app.get("/proxy/events", response_model=List[FormattedEvent])
+def proxy_events(username: str, password: str, base_url: str):
+    return get_events(username, password, base_url)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
