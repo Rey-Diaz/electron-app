@@ -23,9 +23,10 @@ function App() {
     setBaseUrl(event.target.value);
   };
 
-  const handleFetchData = () => {
+  // Inside handleFetchData function
+const handleFetchData = () => {
     // Fetch issues data from the backend
-    axios.get('/proxy/issues', {
+    axios.get('http://localhost:8000/issues', { // Use the correct backend URL
       params: {
         username: username,
         password: password,
@@ -33,19 +34,14 @@ function App() {
       },
     })
     .then((response) => {
-      // Add unique IDs based on row number
-      const issuesWithIds = response.data.map((issue, index) => ({
-        ...issue,
-        id: index + 1,
-      }));
-      setIssues(issuesWithIds);
+      setIssues(response.data);
     })
     .catch((error) => {
       console.error('Error fetching issues:', error);
     });
-
+  
     // Fetch events data from the backend
-    axios.get('/proxy/events', {
+    axios.get('http://localhost:8000/events', { // Use the correct backend URL
       params: {
         username: username,
         password: password,
@@ -53,17 +49,13 @@ function App() {
       },
     })
     .then((response) => {
-      // Add unique IDs based on row number
-      const eventsWithIds = response.data.map((event, index) => ({
-        ...event,
-        id: index + 1,
-      }));
-      setEvents(eventsWithIds);
+      setEvents(response.data);
     })
     .catch((error) => {
       console.error('Error fetching events:', error);
     });
   };
+  
 
   // Define columns for the DataGrid
   const issueColumns = [
