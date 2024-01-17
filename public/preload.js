@@ -1,38 +1,14 @@
-// preload.js
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge } = require('electron');
+const axios = require('axios');
 
-// Expose certain Electron APIs to the renderer process
-contextBridge.exposeInMainWorld('electron', {
-    makeHttpRequest: async (url, method, data) => {
-        try {
-            const response = await fetch(url, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
-            return response.json();
-        } catch (error) {
-            throw error;
-        }
-    },
-    fetchIssues: async (requestData) => {
-        try {
-            // Send a request to the main process to fetch issues
-            const response = await ipcRenderer.invoke('fetch-issues', requestData);
-            return response;
-        } catch (error) {
-            throw error;
-        }
-    },
-    fetchEvents: async (requestData) => {
-        try {
-            // Send a request to the main process to fetch events
-            const response = await ipcRenderer.invoke('fetch-events', requestData);
-            return response;
-        } catch (error) {
-            throw error;
-        }
-    },
+contextBridge.exposeInMainWorld('api', {
+    // Expose a function to make GET requests
+    get: (url, params) => axios.get(url, { params }).then(res => res.data),
+
+    // Expose a function to make POST requests
+    post: (url, data) => axios.post(url, data).then(res => res.data),
+
+    // You can add more HTTP methods as needed
 });
+
+// You can add more functionalities or APIs that you want to expose to your frontend here.

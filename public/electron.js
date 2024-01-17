@@ -2,74 +2,82 @@ const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
-let fastAPIProcess; // Store a reference to the FastAPI child process.
-
-function startFastAPIBackend() {
-    console.log("Starting FastAPI backend...");
-    fastAPIProcess = spawn('python', [path.join(__dirname, 'Backend', 'main.py')]);
-
-    // Optionally, you can handle FastAPI process events and errors.
-    fastAPIProcess.stdout.on('data', (data) => {
-        console.log(`FastAPI stdout: ${data}`);
-    });
-
-    fastAPIProcess.stderr.on('data', (data) => {
-        console.error(`FastAPI stderr: ${data}`);
-    });
-
-    fastAPIProcess.on('close', (code) => {
-        console.log(`FastAPI process exited with code ${code}`);
-    });
-}
+let mainWindow;
 
 function createWindow() {
-    const win = new BrowserWindow({
+    console.log('__dirname:', __dirname);  // Logs the directory name to the console
+
+    mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
-            nodeIntegration: false, // Disable nodeIntegration for security
-            contextIsolation: true, // Enable contextIsolation for security
-        },
+            preload: path.join(__dirname, 'preload.js')
+        }
     });
 
-    console.log("Creating Electron window...");
+    // Correct the path to point to the 'build' directory
+    // Ensure that this path is correct according to your actual directory structure
+    const indexPath = path.join(__dirname, 'index.html');
+    console.log('Loading index.html from:', indexPath);  // Logs the path from which index.html will be loaded
 
-    import('electron-is-dev')
-        .then((isDev) => {
-            win.loadURL(
-                isDev.default
-                    ? 'http://localhost:3000/' // Load from React dev server
-                    : `file://${path.join(__dirname, '../build/index.html')}` // Load built React app
-            );
-
-            console.log("Electron window loaded.");
+    mainWindow.loadFile(indexPath)
+        .then(() => {
+            console.log('Index.html loaded successfully'); // Logs on successful loading
         })
-        .catch((error) => {
-            console.error('Error loading electron-is-dev:', error);
+        .catch(err => {
+            console.error('Error loading index.html:', err); // Logs if there's an error
         });
+
+    // Uncomment the following line if you need to open the Developer Tools:
+    // mainWindow.webContents.openDevTools();
+}
+
+
+function startFastAPIBackend() {
+    // Define the path to the Python executable
+    let backendExecutablePath = path.join(__dirname, '..', 'dist', 'backend', 'main.exe');
+
+    // If the app is packaged, the __dirname will be inside the 'app.asar' archive
+    // Adjust the path to point to the executable outside the archive
+    if (__dirname.includes('app.asar')) {
+        backendExecutablePath = path.join(process.resourcesPath, 'dist', 'backend', 'main.exe');
+    }
+
+    // Spawn the backend process using the path to the executable
+    const backend = spawn(backendExecutablePath, []);
+
+    backend.stdout.on('data', (data) => {
+        console.log(`stdout: ${data}`);
+    });
+
+    backend.stderr.on('data', (data) => {
+        console.error(`stderr: ${data}`);
+    });
+
+    backend.on('close', (code) => {
+        console.log(`FastAPI backend exited with code ${code}`);
+    });
+
+    // Handle errors when the backend process cannot be spawned
+    backend.on('error', (err) => {
+        console.error('Failed to start FastAPI backend:', err);
+    });
+
+    backend.on('error', (error) => {
+        console.error('Failed to start FastAPI backend:', error);
+        console.error(`Error spawning the backend at ${path.join(__dirname, 'backend', 'main.exe')}`);
+    });
 }
 
 app.whenReady().then(() => {
-    console.log("Electron app is ready.");
-    startFastAPIBackend(); // Start the FastAPI backend when Electron app is ready
     createWindow();
+    startFastAPIBackend();
+
+    app.on('activate', function () {
+        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
 });
 
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        console.log("All windows are closed. Quitting Electron app.");
-        // Kill the FastAPI process when all windows are closed.
-        if (fastAPIProcess) {
-            console.log("Killing FastAPI process.");
-            fastAPIProcess.kill();
-        }
-        app.quit();
-    }
-});
-
-app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        console.log("Activating a new window.");
-        createWindow();
-    }
+app.on('window-all-closed', function () {
+    if (process.platform !== 'darwin') app.quit();
 });

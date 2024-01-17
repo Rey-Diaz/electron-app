@@ -1,3 +1,9 @@
+---
+runme:
+  id: 01HMC8SY7QG24WAQN5AY1ZQJ80
+  version: v2.2
+---
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
@@ -8,23 +14,23 @@ In the project directory, you can run:
 
 ### `npm start`
 
-Runs the app in the development mode.\
+Runs the app in the development mode.  
 Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-The page will reload when you make changes.\
+The page will reload when you make changes.  
 You may also see any lint errors in the console.
 
 ### `npm test`
 
-Launches the test runner in the interactive watch mode.\
+Launches the test runner in the interactive watch mode.  
 See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
 ### `npm run build`
 
-Builds the app for production to the `build` folder.\
+Builds the app for production to the `build` folder.  
 It correctly bundles React in production mode and optimizes the build for the best performance.
 
-The build is minified and the filenames include the hashes.\
+The build is minified and the filenames include the hashes.  
 Your app is ready to be deployed!
 
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
@@ -68,3 +74,61 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+# ELECTRON
+
+Step 1: Install Dependencies
+
+Open a terminal in your project's root directory (my-app) and install all the necessary dependencies by running:
+
+sh
+
+npm install
+
+Step 2: Build the React Application
+
+Before packaging the Electron app, you need to create a production build of your React application:
+
+sh
+
+npm run build
+
+This will compile your React app and put the output into the build folder within your project.
+Step 3: Create the Python Executable
+
+Navigate to your backend directory and create a standalone Python executable using PyInstaller:
+
+sh
+
+cd Backend
+pyinstaller --onefile --distpath ../dist/backend main.py
+cd ..
+
+Make sure the distpath points to the dist/backend directory under the root of your project, as this is where Electron Builder will expect to find it based on the extraResources configuration in your package.json.
+Step 4: Package Electron App for Each OS
+
+Now, you can package your Electron app. You have separate scripts for each operating system:
+For Windows:
+
+sh
+
+npm run dist:win
+
+This will create an .exe installer for Windows.
+For macOS:
+
+sh
+
+npm run dist:mac
+
+This will create a .dmg file for macOS. Remember, macOS builds typically need to be performed on a Mac due to code signing and notarization requirements.
+For Linux:
+
+sh
+
+npm run dist:linux
+
+This will create an AppImage or other Linux distributable format depending on your configuration.
+Step 5: Locate the Packaged Application
+
+After running the build commands, your packaged applications will be located in the dist directory at the root of your project. Each command will generate a subdirectory for the corresponding OS with the packaged application inside.
