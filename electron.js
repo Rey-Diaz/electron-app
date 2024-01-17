@@ -1,84 +1,51 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
-const fs = require('fs-extra'); // Import the fs-extra module
 
-let fastAPIProcess; // Store a reference to the FastAPI child process.
-
-function startFastAPIBackend() {
-    console.log("Starting FastAPI backend...");
-
-    // Specify the source and destination paths for the backend directory
-    const sourceBackendDir = path.join(__dirname, 'Backend'); // Replace with your actual path
-    const destinationBackendDir = path.join(__dirname, 'dist', 'Backend');
-
-    // Copy the backend directory to the distribution directory
-    fs.copySync(sourceBackendDir, destinationBackendDir);
-
-    fastAPIProcess = spawn('python', [path.join(destinationBackendDir, 'main.py')]); // Updated path
-
-    // Optionally, you can handle FastAPI process events and errors.
-    fastAPIProcess.stdout.on('data', (data) => {
-        console.log(`FastAPI stdout: ${data}`);
-    });
-
-    fastAPIProcess.stderr.on('data', (data) => {
-        console.error(`FastAPI stderr: ${data}`);
-    });
-
-    fastAPIProcess.on('close', (code) => {
-        console.log(`FastAPI process exited with code ${code}`);
-    });
-}
+let mainWindow;
 
 function createWindow() {
-    const win = new BrowserWindow({
+    mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
-            nodeIntegration: false, // Disable nodeIntegration for security
-            contextIsolation: true, // Enable contextIsolation for security
-        },
+            preload: path.join(__dirname, 'preload.js')
+        }
     });
 
-    console.log("Creating Electron window...");
+    // Replace with the path to your built frontend index.html
+    mainWindow.loadFile(path.join(__dirname, 'public', 'index.html'));
 
-    import('electron-is-dev')
-        .then((isDev) => {
-            win.loadURL(
-                isDev.default
-                    ? 'http://localhost:3000/' // Load from React dev server
-                    : `file://${path.join(__dirname, '../build/index.html')}` // Load built React app
-            );
+    // Open the DevTools.
+    // mainWindow.webContents.openDevTools();
+}
 
-            console.log("Electron window loaded.");
-        })
-        .catch((error) => {
-            console.error('Error loading electron-is-dev:', error);
-        });
+function startFastAPIBackend() {
+    // Replace with the correct path to your FastAPI main.py
+    const backend = spawn('python', [path.join(__dirname, 'Backend', 'main.py')]);
+
+    backend.stdout.on('data', (data) => {
+        console.log(`stdout: ${data}`);
+    });
+
+    backend.stderr.on('data', (data) => {
+        console.error(`stderr: ${data}`);
+    });
+
+    backend.on('close', (code) => {
+        console.log(`FastAPI backend exited with code ${code}`);
+    });
 }
 
 app.whenReady().then(() => {
-    console.log("Electron app is ready.");
-    startFastAPIBackend(); // Start the FastAPI backend when Electron app is ready
     createWindow();
+    startFastAPIBackend();
+
+    app.on('activate', function () {
+        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
 });
 
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        console.log("All windows are closed. Quitting Electron app.");
-        // Kill the FastAPI process when all windows are closed.
-        if (fastAPIProcess) {
-            console.log("Killing FastAPI process.");
-            fastAPIProcess.kill();
-        }
-        app.quit();
-    }
-});
-
-app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        console.log("Activating a new window.");
-        createWindow();
-    }
+app.on('window-all-closed', function () {
+    if (process.platform !== 'darwin') app.quit();
 });

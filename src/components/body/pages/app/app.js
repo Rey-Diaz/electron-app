@@ -30,11 +30,14 @@ function AppPage() {
     setBaseUrl(event.target.value);
   };
 
+  // Use an environment variable or default value for the API base URL
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+
   const handleFetchData = () => {
     // Fetch issues data from the backend if currentTable is 'issues'
     if (currentTable === 'issues') {
       axios
-        .get('http://localhost:8000/issues', {
+        .get(`${apiBaseUrl}/issues`, {
           params: {
             username: username,
             password: password,
@@ -53,7 +56,7 @@ function AppPage() {
     } else {
       // Fetch events data from the backend if currentTable is 'events'
       axios
-        .get('http://localhost:8000/events', {
+        .get(`${apiBaseUrl}/events`, {
           params: {
             username: username,
             password: password,
@@ -169,7 +172,7 @@ function AppPage() {
             </Button>
           </Grid>
         </Grid>
-        <div className="ag-theme-alpine" style={{ height: '100%', width: '100%', marginTop: '20px' }}>
+        <div className="ag-theme-alpine" style={{ height: tableHeight, width: '100%', marginTop: '20px' }}>
           <AgGridReact
             rowData={currentTable === 'issues' ? issues : events}
             columnDefs={currentTable === 'issues' ? issueColumns : eventColumns}

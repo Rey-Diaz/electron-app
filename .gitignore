@@ -25,3 +25,5 @@ yarn-error.log*
 Backend/venv/*
 dist/*
 build/*
+
+/Backend/build/*
