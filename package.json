@@ -23,8 +23,9 @@
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
   },
-  "main": "electron.js",
+  "main": "public/electron.js",
   "scripts": {
+    "start-python": "start Backend/dist/main.exe",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -42,8 +43,8 @@
     "asar": true,
     "extraResources": [
       {
-        "from": "./dist/backend/",
-        "to": "backend/",
+        "from": "../Backend/dist/main.exe",
+        "to": "backend/main.exe",
         "filter": ["**/*"]
       }
     ],
