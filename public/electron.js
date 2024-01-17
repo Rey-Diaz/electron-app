@@ -1,75 +1,75 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const { spawn } = require('child_process');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
 
-let mainWindow;
-let logWindow; // Additional window for server logs
-let fastapiProcess;
+let fastAPIProcess; // Store a reference to the FastAPI child process.
 
-function createMainWindow() {
-  mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
-  });
-  // Load the main content of your app
-  mainWindow.loadURL('http://localhost:3000/'); // Adjust as needed
+function startFastAPIBackend() {
+    console.log("Starting FastAPI backend...");
+    fastAPIProcess = spawn('python', [path.join(__dirname, 'Backend', 'main.py')]);
+
+    // Optionally, you can handle FastAPI process events and errors.
+    fastAPIProcess.stdout.on('data', (data) => {
+        console.log(`FastAPI stdout: ${data}`);
+    });
+
+    fastAPIProcess.stderr.on('data', (data) => {
+        console.error(`FastAPI stderr: ${data}`);
+    });
+
+    fastAPIProcess.on('close', (code) => {
+        console.log(`FastAPI process exited with code ${code}`);
+    });
 }
 
-function createLogWindow() {
-  logWindow = new BrowserWindow({
-    width: 600,
-    height: 400,
-    title: "Server Logs",
-    webPreferences: {
-      nodeIntegration: true
-    }
-  });
-  // Load the HTML file for displaying logs
-  logWindow.loadFile(path.join(__dirname, 'log.html')); // Ensure this file exists
-}
+function createWindow() {
+    const win = new BrowserWindow({
+        width: 800,
+        height: 600,
+        webPreferences: {
+            nodeIntegration: false, // Disable nodeIntegration for security
+            contextIsolation: true, // Enable contextIsolation for security
+        },
+    });
 
-function startFastAPIProcess() {
-  const backendPath = path.join(__dirname, '../Backend/main.py');
-  fastapiProcess = spawn('python', [backendPath]);
+    console.log("Creating Electron window...");
 
-  fastapiProcess.stdout.on('data', (data) => {
-    console.log(`FastAPI stdout: ${data}`);
-    if (logWindow) {
-      logWindow.webContents.send('log-message', data.toString());
-    }
-  });
+    import('electron-is-dev')
+        .then((isDev) => {
+            win.loadURL(
+                isDev.default
+                    ? 'http://localhost:3000/' // Load from React dev server
+                    : `file://${path.join(__dirname, '../build/index.html')}` // Load built React app
+            );
 
-  fastapiProcess.stderr.on('data', (data) => {
-    console.error(`FastAPI stderr: ${data}`);
-  });
-
-  fastapiProcess.on('close', (code) => {
-    console.log(`FastAPI process exited with code ${code}`);
-  });
+            console.log("Electron window loaded.");
+        })
+        .catch((error) => {
+            console.error('Error loading electron-is-dev:', error);
+        });
 }
 
 app.whenReady().then(() => {
-  createMainWindow();
-  createLogWindow();
-  startFastAPIProcess();
+    console.log("Electron app is ready.");
+    startFastAPIBackend(); // Start the FastAPI backend when Electron app is ready
+    createWindow();
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    if (fastapiProcess) {
-      fastapiProcess.kill();
+    if (process.platform !== 'darwin') {
+        console.log("All windows are closed. Quitting Electron app.");
+        // Kill the FastAPI process when all windows are closed.
+        if (fastAPIProcess) {
+            console.log("Killing FastAPI process.");
+            fastAPIProcess.kill();
+        }
+        app.quit();
     }
-    app.quit();
-  }
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createMainWindow();
-    createLogWindow();
-  }
+    if (BrowserWindow.getAllWindows().length === 0) {
+        console.log("Activating a new window.");
+        createWindow();
+    }
 });
