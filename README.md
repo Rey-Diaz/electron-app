@@ -1,8 +1,4 @@
----
-runme:
-  id: 01HMC8SY7QG24WAQN5AY1ZQJ80
-  version: v2.2
----
+
 
 # Getting Started with Create React App
 
